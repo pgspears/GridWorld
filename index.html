@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Grid World RL Agent - TensorFlow.js</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Interactive Grid World Agent with Reinforcement Learning</h1>
+        <p>Visualizing an AI learning to navigate a grid using TensorFlow.js</p>
+    </header>
+
+    <div class="main-container">
+        <div class="simulation-plot-column">
+            <section id="simulation-container" class="card">
+                <h2>Live Simulation (Grid World)</h2>
+                <canvas id="gridworld-canvas" width="350" height="350"></canvas>
+                <div class="canvas-controls">
+                    <label for="simHeightSlider">Sim Height: <span id="simHeightValue">350</span>px</label>
+                    <input type="range" id="simHeightSlider" min="200" max="500" value="350" step="10">
+                </div>
+                <p class="status-display">Status: <span id="status-message">Idle</span></p>
+            </section>
+
+            <section id="plot-container" class="card">
+                <h2>Reward per Episode</h2>
+                <canvas id="reward-plot-canvas" width="700" height="330"></canvas>
+                <div class="canvas-controls">
+                    <label for="plotHeightSlider">Plot Height: <span id="plotHeightValue">330</span>px</label>
+                    <input type="range" id="plotHeightSlider" min="200" max="500" value="330" step="10">
+                    <button id="copyPlotButton">Copy Plot to Clipboard</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="controls-info-column">
+            <div class="scrollable-content">
+                <section id="controls-metrics" class="card">
+                    <h2>Controls & Metrics</h2>
+                    <div class="button-group">
+                        <button id="startButton">Start Training</button>
+                        <button id="stopButton" disabled>Stop Training</button>
+                        <button id="runTrainedButton" disabled>Run Trained Agent</button>
+                    </div>
+                    <div class="button-group">
+                        <button id="saveAgentButton" disabled>Save Agent</button>
+                        <button id="loadAgentButton">Load Agent</button>
+                    </div>
+                    <div class="options-group">
+                        <label for="fastTrainingCheckbox">
+                            <input type="checkbox" id="fastTrainingCheckbox"> Fast Training Visualization
+                        </label>
+                    </div>
+                    <div class="metrics-grid">
+                        <p id="metric-episode"><strong>Episode:</strong> <span id="episode-counter">0</span></p>
+                        <p id="metric-total-reward"><strong>Total Reward (Last Ep):</strong> <span id="total-reward">0</span></p>
+                        <p id="metric-avg-reward"><strong>Avg. Reward (Last 100):</strong> <span id="avg-reward">0</span></p>
+                        <p id="metric-loss"><strong>Loss (Last Ep):</strong> <span id="loss-value">-</span></p>
+                    </div>
+                </section>
+
+                <section id="educational-content" class="card">
+                    <h2>Understanding This Application (Grid World Edition)</h2>
+                    <h3>What is Grid World?</h3>
+                    <p>Grid World is a classic, simplified environment extensively used to illustrate and test fundamental concepts in Reinforcement Learning. It typically consists of a two-dimensional grid of cells. The AI agent's objective is to learn an optimal path from a designated starting cell to a goal cell. The grid can be configured with various complexities, such as impassable obstacles (walls) that the agent must navigate around. Movement is usually discrete, allowing the agent to transition to adjacent cells (Up, Down, Left, Right) one step at a time. Its well-defined structure makes it ideal for studying core RL algorithms and phenomena like exploration versus exploitation.</p>
+
+                    <h3>Reinforcement Learning (RL) in Grid World</h3>
+                    <p>In this particular Grid World simulation, the AI <strong>agent</strong>'s task is to learn an effective <strong>policy</strong>—a strategy for choosing actions—that guides it from its start position to the green goal cell. The learning process is driven by a system of <strong>rewards</strong> and penalties:</p>
+                    <ul>
+                        <li>A significant positive reward is given when the agent successfully reaches the goal cell.</li>
+                        <li>A negative reward (penalty) is incurred if the agent attempts to move into a wall or outside the grid boundaries.</li>
+                        <li>A small negative reward is applied for each step taken; this subtly encourages the agent to find shorter paths and be more efficient in its navigation.</li>
+                    </ul>
+                    <p>The <strong>state (s)</strong>, which is the information the agent uses to make decisions, is its current (x,y) coordinate position on the grid. To be processed by the neural network, this coordinate is transformed into a "one-hot encoded" vector. This vector is essentially a list of zeros with a single '1' at the index representing the agent's current cell, providing a unique numerical signature for each possible position. The available <strong>actions (a)</strong> are discrete: Move Up, Move Down, Move Left, or Move Right.</p>
+                    
+                    <h3>Method Used: REINFORCE Algorithm</h3>
+                    <p>This application employs the <strong>REINFORCE</strong> algorithm, also known as Monte Carlo Policy Gradient. It's a foundational algorithm in RL where the agent directly learns the parameters of its policy. The agent's policy is represented by a neural network, constructed and trained using TensorFlow.js. This network takes the current state (the one-hot encoded grid position) as input and its output layer, using a softmax activation function, produces a probability distribution over the four possible actions. After each complete episode (one attempt from the start position until the goal is reached, a wall is hit, or a maximum number of steps is exceeded), the REINFORCE algorithm updates the policy network's internal weights and biases. This update is based on the **discounted cumulative reward (Return G<sub>t</sub>)** calculated for each step taken during the episode. Actions that were part of sequences leading to higher overall returns (e.g., successfully reaching the goal quickly) are "reinforced," meaning their probabilities are increased for similar states encountered in the future. Conversely, actions that led to penalties or prolonged wandering are made less likely.</p>
+
+                    <h3>The Agent's Policy Explained (Technical Detail)</h3>
+                    <p>The agent's "decision-making brain," its **policy (π)**, is a neural network. When the agent perceives the current **state (s)** of the Grid World (its one-hot encoded x,y coordinates), this state vector is fed as input into the network. The network processes this information through one or more hidden layers, which learn to extract relevant features. The final output layer, using a **softmax activation function**, produces a set of probabilities, one for each possible action (Up, Down, Left, Right). For example, for a given state, the output might be [P(Up)=0.1, P(Down)=0.6, P(Left)=0.2, P(Right)=0.1]. These probabilities sum to 1.</p>
+                    <p>The agent then **samples** an action based on this probability distribution rather than always picking the action with the highest probability. This stochastic selection is crucial for balancing exploration (trying new paths) and exploitation (following known good paths). The specific numbers determining these probabilities are the **weights and biases (parameters θ)** within the neural network.</p>
+                    <p>The **REINFORCE** algorithm updates these parameters θ at the end of each episode. For every step 't' in the episode, the **discounted cumulative return (G<sub>t</sub>)** is calculated (sum of future rewards, with distant rewards being less valuable due to a **discount factor γ**). These returns are often **normalized** (centered around zero) to stabilize learning. The algorithm then aims to adjust θ to maximize the expected sum of `log(π(a<sub>t</sub>|s<sub>t</sub>, θ)) * G<sub>t</sub>`. In practice, an optimizer minimizes a **loss function** which is the negative of this sum. This means if an action `a<sub>t</sub>` in state `s<sub>t</sub>` led to a high positive (normalized) `G<sub>t</sub>`, the network's parameters are nudged to increase the probability `π(a<sub>t</sub>|s<sub>t</sub>, θ)`. If `G<sub>t</sub>` was negative, that action's probability is decreased for that state.</p>
+
+                    <h3>Key Terms & Visualization</h3>
+                    <dl>
+                        <dt>Agent:</dt><dd>The AI (a neural network) learning to navigate.</dd>
+                        <dt>Environment:</dt><dd>The 2D grid with start, goal, and walls.</dd>
+                        <dt>State (s):</dt><dd>Agent's (x,y) position, one-hot encoded.</dd>
+                        <dt>Action (a):</dt><dd>Up, Down, Left, Right.</dd>
+                        <dt>Policy (π(a|s,θ)):</dt><dd>The neural network mapping states to action probabilities.</dd>
+                        <dt>Reward (r):</dt><dd>Numerical feedback (+10 for goal, -0.75 for wall, -0.05 per step).</dd>
+                        <dt>Return (G<sub>t</sub>):</dt><dd>Discounted sum of future rewards from a given step.</dd>
+                        <dt>Episode:</dt><dd>A single attempt from start to termination (goal, wall, or max steps).</dd>
+                        <dt>REINFORCE:</dt><dd>The Monte Carlo policy gradient algorithm updating the policy network.</dd>
+                        <dt>TensorFlow.js:</dt><dd>The JavaScript library used for the neural network and its training.</dd>
+                        <dt>HTML Canvas:</dt><dd>Used to draw the Grid World and the reward plot.</dd>
+                    </dl>
+                    <p>The <strong>Live Simulation</strong> window shows the agent's pathfinding attempts. The <strong>Reward per Episode</strong> plot is a critical indicator: a general upward trend, especially towards positive values, signifies the agent is learning to reach the goal more consistently and/or efficiently. The <strong>Average Reward (Last 100)</strong> smooths this out. Dynamic color changes in these metrics also provide at-a-glance performance feedback.</p>
+                    
+                    <h3>Further Learning & Resources</h3>
+                    <p>Grid World environments are foundational for understanding many RL concepts. To delve deeper:</p>
+                    <ul>
+                        <li>Explore other RL algorithms often applied to Grid Worlds, such as **Q-Learning** and **SARSA**, which are value-based methods. Contrast their learning mechanisms with policy gradient methods like REINFORCE.</li>
+                        <li>Investigate the impact of different **reward shaping** techniques – how altering the reward function can guide the agent's learning more effectively.</li>
+                        <li>Consider the challenges of **larger or more complex grid environments**, including those with stochastic (random) transitions or partial observability.</li>
+                        <li>**David Silver's Reinforcement Learning Course (UCL):** <a href="https://www.davidsilver.uk/teaching/" target="_blank" rel="noopener noreferrer">Lecture Slides & Videos</a> (Excellent, comprehensive university course).</li>
+                        <li>**Lilian Weng's Blog Post on Policy Gradient Algorithms:** <a href="https://lilianweng.github.io/posts/2018-04-08-policy-gradient/" target="_blank" rel="noopener noreferrer">A (Long) Peek into Reinforcement Learning</a> (Detailed technical explanations).</li>
+                        <li>**DeepLizard Reinforcement Learning Series (YouTube):** Offers accessible video tutorials on various RL topics.</li>
+                        <li>The previously mentioned "Spinning Up in Deep RL by OpenAI" and Sutton & Barto's textbook remain invaluable.</li>
+                    </ul>
+                    <p>This Grid World application, while using a specific algorithm, opens the door to understanding a wide array of techniques used to build intelligent, adaptive systems.</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <p>Built with JavaScript, TensorFlow.js, and HTML Canvas.</p>
+    </footer>
+    <div class="copyright-footer">
+        <p>© Patrick Spears 2025</p>
+    </div>
+
+    <script src="gridworld.js"></script>
+    <script src="agent.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
